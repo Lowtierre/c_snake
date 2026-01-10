@@ -1,8 +1,67 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <time.h>
-#include <conio.h>
+
+/* ============================================
+   CROSS-PLATFORM COMPATIBILITY LAYER
+   ============================================ */
+
+#ifdef _WIN32
+    /* Windows */
+    #include <conio.h>
+    #include <windows.h>
+    #define sleep_ms(ms) Sleep(ms)
+    #define clear_screen() system("cls")
+#else
+    /* Linux / macOS (POSIX) */
+    #include <unistd.h>
+    #include <termios.h>
+    #include <fcntl.h>
+    #include <sys/ioctl.h>
+    #define sleep_ms(ms) usleep((ms) * 1000)
+    #define clear_screen() system("clear")
+
+    /* Implementazione portabile di kbhit() */
+    int _kbhit(void) {
+        struct termios oldt, newt;
+        int ch;
+        int oldf;
+        
+        tcgetattr(STDIN_FILENO, &oldt);
+        newt = oldt;
+        newt.c_lflag &= ~(ICANON | ECHO);
+        tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+        oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+        fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+        
+        ch = getchar();
+        
+        tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+        fcntl(STDIN_FILENO, F_SETFL, oldf);
+        
+        if (ch != EOF) {
+            ungetc(ch, stdin);
+            return 1;
+        }
+        return 0;
+    }
+
+    /* Implementazione portabile di getch() */
+    int _getch(void) {
+        struct termios oldt, newt;
+        int ch;
+        
+        tcgetattr(STDIN_FILENO, &oldt);
+        newt = oldt;
+        newt.c_lflag &= ~(ICANON | ECHO);
+        tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+        
+        ch = getchar();
+        
+        tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+        return ch;
+    }
+#endif
 
 #define H_SCALE 2
 #define DIM 16
@@ -35,10 +94,10 @@ void gotoxy(int x, int y);
 int main() {
     int play = 1;
     while(play) {
-        system("cls");
+        clear_screen();
         display_header();
         int score = game();
-        system("cls");
+        clear_screen();
         display_header();
         display_score(score);
         play = play_or_quit();
@@ -73,7 +132,7 @@ int game() {
             display_fruit(*fruit);
         }
         len += eat;
-        usleep(150000);
+        sleep_ms(150);
         dir = catch_input(dir, len);
         delete_tail(snake, len);
         snake = update_snake(snake, len, dir, eat);
@@ -242,8 +301,28 @@ int catch_input(int dir, int len) {
     int new_dir = dir;
     if (_kbhit()) {
         int ch = _getch();
-        if (ch == 0 || ch == 224)
+#ifdef _WIN32
+        /* Windows: frecce inviano 0 o 224 seguito dal codice */
+        if (ch == 0 || ch == 224) {
             new_dir = _getch();
+        }
+#else
+        /* Linux/macOS: frecce inviano ESC [ A/B/C/D */
+        if (ch == 27) { /* ESC */
+            if (_kbhit()) {
+                ch = _getch();
+                if (ch == '[' && _kbhit()) {
+                    ch = _getch();
+                    switch (ch) {
+                        case 'A': new_dir = 72; break; /* UP */
+                        case 'B': new_dir = 80; break; /* DOWN */
+                        case 'C': new_dir = 77; break; /* RIGHT */
+                        case 'D': new_dir = 75; break; /* LEFT */
+                    }
+                }
+            }
+        }
+#endif
     }
     int diff = new_dir - dir;
     if ((diff == 8 || diff == -8 || diff == 2 || diff == -2) && len > 1) return dir;
