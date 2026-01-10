@@ -23,7 +23,7 @@ void display_record();
 void display_snake(pos *snake, int len);
 void display_segment(pos segment);
 void display_fruit(pos fruit);
-void delete_snake(pos *snake, int len);
+void delete_tail(pos *snake, int len);
 pos *place_fruit(pos *snake, int len);
 int check_overlapping(pos *snake, int len);
 int catch_input(int dir, int len);
@@ -51,6 +51,7 @@ int main() {
 int game() {
     int len = 1;
     int dir = 80;
+
     pos *snake = malloc(len * sizeof(pos));
     snake->x = 5;
     snake->y = 5;
@@ -74,7 +75,7 @@ int game() {
         len += eat;
         usleep(150000);
         dir = catch_input(dir, len);
-        delete_snake(snake, len);
+        delete_tail(snake, len);
         snake = update_snake(snake, len, dir, eat);
     }
 
@@ -162,9 +163,7 @@ void display_record() {
 
 /* function to display the whole snake's body. */
 void display_snake(pos *snake, int len) {
-    for (int i = 0; i < len; i++) {
-        display_segment(snake[i]);
-    }
+    display_segment(snake[0]);
 }
 
 /* function to display a single segment of snake's body.
@@ -187,18 +186,16 @@ void display_fruit(pos fruit) {
     }
 }
 
-void delete_snake(pos *snake, int len) {
-    for (int i = 0; i < len; i++) {
-        for (int j = 0; j < H_SCALE; j++) {
-            int scaled_x = ((snake+i)->x * H_SCALE) + j;
-            gotoxy(scaled_x, (snake+i)->y + 1);
-            // manage deletion of grid when snake pass along the bottom side.
-            if ((snake+i)->y == DIM) {
-                gotoxy(scaled_x, (snake+i)->y + 1);
-                putchar('_');
-            } else  putchar(32);
-            
-        }
+void delete_tail(pos *snake, int len) {
+    for (int i = 0; i < H_SCALE; i++) {
+        int scaled_x = ((snake+len-1)->x * H_SCALE) + i;
+        gotoxy(scaled_x, (snake+len-1)->y + 1);
+        // manage deletion of grid when snake pass along the bottom side.
+        if ((snake+len-1)->y == DIM) {
+            gotoxy(scaled_x, (snake+len-1)->y + 1);
+            putchar('_');
+        } else  putchar(32);
+        
     }
 }
 
