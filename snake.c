@@ -6,13 +6,15 @@
 
 #define H_SCALE 2
 #define DIM 16
-#define OFFSET_X 6
-#define OFFSET_Y 22
+#define OFFSET_X 1
+#define OFFSET_Y 4
 
 typedef struct { int x; int y; } pos;
 
-void header();
-void game();
+void display_header();
+void display_score(int len);
+int play_or_quit();
+int game();
 pos *update_snake(pos *snake, int len, int dir, int eat);
 pos *update_head(pos *head, int dir);
 void display_grid();
@@ -30,16 +32,23 @@ int check_fruit(pos head, pos fruit);
 void gotoxy(int x, int y);
 
 
-
 int main() {
-    system("cls");
-    header();
-    game();
+    int play = 1;
+    while(play) {
+        system("cls");
+        display_header();
+        int score = game();
+        system("cls");
+        display_header();
+        display_score(score);
+        play = play_or_quit();
+    }
+
     return 0;
 }
 
 /* function with game loop */
-void game() {
+int game() {
     int len = 1;
     int dir = 80;
     pos *snake = malloc(len * sizeof(pos));
@@ -63,11 +72,13 @@ void game() {
             display_fruit(*fruit);
         }
         len += eat;
-        usleep(200000);
+        usleep(150000);
         dir = catch_input(dir, len);
         delete_snake(snake, len);
         snake = update_snake(snake, len, dir, eat);
     }
+
+    return len;
 }
 
 /* function to update position of the snake */
@@ -125,6 +136,7 @@ void display_grid() {
         for (int j = 0; j <= w; j++) {
             gotoxy(j+1, i+1);
             if (i == 0) printf("_");
+            if (i == 0 && j == w) printf("_");
             if ((i != 0 && i != h) && j != 0) printf(" ");
             if ((i != 0 && i != h) && j == 0) printf("|");
             if ((i != 0 && i != h) && j == w-1) printf(" |");
@@ -145,7 +157,7 @@ void display_len(int len) {
 /* function to display record of the game */
 void display_record() {
     gotoxy(DIM * H_SCALE - 10, 0);
-    printf("Record: %d\n", 9999);
+    printf("Record: %d\n", 255);
 }
 
 /* function to display the whole snake's body. */
@@ -241,28 +253,37 @@ int catch_input(int dir, int len) {
     return new_dir;
 }
 
-/* function to display header of game with 'Snake' in ASCII art */
-void header() {
-    printf(
-        "           /^\\/^\\\n"
-        "         _|__|  O|\n"
-        "\\/     /~     \\_/ \\\n"
-        " \\____|__________/  \\\n"
-        "        \\_______      \\\n"
-        "                `\\     \\                 \\\n"
-        "                  |     |                  \\\n"
-        "                 /      /                    \\\n"
-        "                /     /                       \\\\\n"
-        "              /      /                         \\ \\\n"
-        "             /     /                            \\  \\\n"
-        "           /     /             _----_            \\   \\\n"
-        "          /     /           _-~      ~-_         |   |\n"
-        "         (      (        _-~    _--_    ~-_     _/   |\n"
-        "          \\      ~-____-~    _-~    ~-_    ~-_-~    /\n"
-        "            ~-_           _-~          ~-_       _-~\n"
-        "               ~--______-~                ~-___-~\n"
-        "\n"
-            );
+/* function to display header of game */
+void display_header() {
+    printf("SNAKE GAME\n\n");
+}
+
+/* function to display score */
+void display_score(int len) {
+    printf("Game over. Score -> %d\n\n", len);
+}
+
+/* flow to manage play or quit */
+int play_or_quit() {
+    int choice;
+choose:
+    printf("[Y] to replay or [N] to quit: ");
+    choice = getchar();
+    
+    // Svuota il buffer (consuma tutto fino al newline incluso)
+    while (getchar() != '\n');
+    
+    switch (choice) {
+        case 'Y':
+        case 'y':
+            return 1;
+        case 'N':
+        case 'n':
+            return 0;
+        default:
+            printf("\nYou can digit only [Y] or [N]!\n\n");
+            goto choose;
+    }
 }
 
 /* util to move cursor in terminal.
