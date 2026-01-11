@@ -1,1 +1,11 @@
-a.exe
+# Executables
+*.exe
+*.out
+snake
+
+# Object files
+*.o
+*.obj
+
+# Score file (optional - remove if you want to track scores)
+# score.txt

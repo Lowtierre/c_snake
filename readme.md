@@ -13,14 +13,14 @@ A classic terminal-based Snake game written in C. Cross-platform compatible with
 - **GCC** compiler (or any C compiler)
   - Windows: [MinGW](https://www.mingw-w64.org/) or [MSYS2](https://www.msys2.org/)
   - Linux: `sudo apt install gcc` (Debian/Ubuntu) or `sudo dnf install gcc` (Fedora)
-  - macOS: `xcode-select --install`
+  - macOS: `xcode-select --install` or `brew install gcc`
 
 ## Download
 
 ### Option 1: Clone with Git
 
 ```bash
-git clone https://github.com/Lowtierre/snake.git
+git clone https://github.com/Lowtierre/c_snake.git
 cd snake
 ```
 
