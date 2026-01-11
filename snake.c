@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 /* ============================================
@@ -65,11 +66,16 @@
 
 #define H_SCALE 2
 #define DIM 16
-#define OFFSET_X 1
-#define OFFSET_Y 4
+#define OFFSET_X 0
+#define OFFSET_Y 5
+#define FILE_NAME "score.txt"
 
 typedef struct { int x; int y; } pos;
 
+int init(char *name, int max_score);
+int get_max_score(char *name);
+int overwrite_max_score(char *name, int score);
+void display_record(int max_score);
 void display_header();
 void display_score(int len);
 int play_or_quit();
@@ -78,7 +84,6 @@ pos *update_snake(pos *snake, int len, int dir, int eat);
 pos *update_head(pos *head, int dir);
 void display_grid();
 void display_len(int len);
-void display_record();
 void display_snake(pos *snake, int len);
 void display_segment(pos segment);
 void display_fruit(pos fruit);
@@ -90,16 +95,20 @@ int check_boundaries(pos head);
 int check_fruit(pos head, pos fruit);
 void gotoxy(int x, int y);
 
-
 int main() {
     int play = 1;
+    int max_score = -1;
+    char name[50];
     while(play) {
         clear_screen();
         display_header();
+        max_score = init(name, max_score);
+        printf("Max score of %s: %d\n", name, max_score);
         int score = game();
         clear_screen();
         display_header();
         display_score(score);
+        if (score > max_score) overwrite_max_score(name, score);
         play = play_or_quit();
     }
 
@@ -120,7 +129,6 @@ int game() {
 
     display_grid();
     display_fruit(*fruit);
-    display_record();
 
     while (check_boundaries(*snake) && check_overlapping(snake, len)) {
         display_len(len);
@@ -212,12 +220,6 @@ void display_grid() {
 void display_len(int len) {
     gotoxy(1, 0);
     printf("Length: %d\n", len);
-}
-
-/* function to display record of the game */
-void display_record() {
-    gotoxy(DIM * H_SCALE - 10, 0);
-    printf("Record: %d\n", 255);
 }
 
 /* function to display the whole snake's body. */
@@ -329,6 +331,89 @@ int catch_input(int dir, int len) {
     return new_dir;
 }
 
+int init(char *name, int max_score) {
+    if (max_score == -1) {
+        printf("What's your username? ");
+        scanf("%49s", name);
+    }
+    
+    max_score = get_max_score(name);
+    if (max_score == -1) {
+        FILE *pfa = fopen(FILE_NAME, "a");
+        if (pfa == NULL) {
+            printf("Error in file opening!\n");
+        }
+        
+        fprintf(pfa, "[%s]: 0\n", name);
+        fclose(pfa);
+        max_score = 0;
+    }
+    clear_screen();
+    display_header();
+    return max_score;
+}
+
+/* function to get max_score from corresponding user in score.txt */
+int get_max_score(char *name) {
+    FILE *pf = fopen(FILE_NAME, "r");
+    if (pf == NULL) {
+        return -1;
+    }
+
+    char line[128];
+    char search_pattern[64];
+    sprintf(search_pattern, "[%s]:", name);  // buils "[Name]:"
+
+    while (fgets(line, sizeof(line), pf) != NULL) {
+        if (strstr(line, search_pattern) != NULL) {
+            int score;
+            // Extract score after ": "
+            if (sscanf(line, "%*[^:]: %d", &score) == 1) {
+                fclose(pf);
+                return score;
+            }
+        }
+    }
+
+    fclose(pf);
+    return -1;  // user not found
+}
+
+/* function to update max score of user */
+int overwrite_max_score(char *name, int score) {
+    printf("Congrats %s! You broke your record!\n", name);
+
+    FILE *pf = fopen(FILE_NAME, "r");
+    if (pf == NULL) return -1;
+
+    // Read all lines into a buffer
+    char lines[100][128];  // max 100 lines, 128 chars each
+    int line_count = 0;
+    
+    char search_pattern[64];
+    sprintf(search_pattern, "[%s]:", name);
+
+    while (fgets(lines[line_count], sizeof(lines[0]), pf) != NULL && line_count < 100) {
+        // If this line matches the name, replace it
+        if (strstr(lines[line_count], search_pattern) != NULL) {
+            sprintf(lines[line_count], "[%s]: %d\n", name, score);
+        }
+        line_count++;
+    }
+    fclose(pf);
+
+    // Write all lines back to file
+    pf = fopen(FILE_NAME, "w");
+    if (pf == NULL) return -1;
+
+    for (int i = 0; i < line_count; i++) {
+        fputs(lines[i], pf);
+    }
+    fclose(pf);
+
+    return 0;
+}
+
 /* function to display header of game */
 void display_header() {
     printf("SNAKE GAME\n\n");
@@ -342,12 +427,13 @@ void display_score(int len) {
 /* flow to manage play or quit */
 int play_or_quit() {
     int choice;
+
 choose:
-    printf("[Y] to replay or [N] to quit: ");
-    choice = getchar();
-    
     // Svuota il buffer (consuma tutto fino al newline incluso)
     while (getchar() != '\n');
+
+    printf("[Y] to replay or [N] to quit: ");
+    choice = getchar();
     
     switch (choice) {
         case 'Y':
